@@ -5,23 +5,23 @@ use std::io::Read;
 use crate::elf_parser::ElfParser;
 
 fn main() {
-    println!("Hello, world!");
     let mut file = std::fs::File::open("./test.elf").expect("Failed to open a file.");
     let mut buf = Vec::new();
     file.read_to_end(&mut buf).expect("Failed to read a file.");
     let mut elf_parser = ElfParser { file: buf };
 
-    match ElfParser::parse_header(&elf_parser.file) {
-        Ok(input) => {
-            println!("{:?}", input.0[0]);
-            println!("{:?}", input.0[1]);
-            println!("{:?}", input.0[2]);
-            println!("{:?}", input.0[3]);
-            println!("{:?}", input.1);
+    match elf_parser.parse() {
+        Ok((_, elf)) => {
+            println!("{:?}", elf.header);
+            for program_header in elf.program_headers {
+                println!("{:?}", program_header);
+            }
+
+            for section_header in elf.section_headers {
+                println!("{:?}", section_header);
+            }
         },
-        Err(_) => {
-            println!("Error.");
-        }
+        Err(_) => {}
     }
 }
-// 282584257676671
+// 1236
