@@ -2,12 +2,13 @@
 pub struct Elf {
     pub header: ElfHeader,
     pub program_headers: Vec<ProgramHeader>,
-    pub section_headers: Vec<SectionHeader>
+    pub sections: Vec<Section>
 }
 
+#[derive(Debug)]
 pub struct Section {
     pub name: String,
-    pub section_header: SectionHeader
+    pub header: SectionHeader
 }
 
 #[derive(Debug)]

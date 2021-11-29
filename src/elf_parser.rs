@@ -1,6 +1,6 @@
-use nom::{IResult, bytes::complete::{tag, take}, multi::count, number::complete::{le_u16, le_u32, le_u64}};
+use nom::{combinator::not, IResult, bytes::complete::{tag, take, take_while}, character::{is_alphabetic, is_alphanumeric}, multi::count, number::complete::{le_u16, le_u32, le_u64}};
 
-use crate::elf_struct::{Elf, ElfHeader, ProgramHeader, SectionHeader};
+use crate::elf_struct::{Elf, ElfHeader, ProgramHeader, SectionHeader, Section};
 
 pub struct ElfParser {
     pub file: Vec<u8>
@@ -23,11 +23,26 @@ impl ElfParser {
             &self.file[elf_header.section_header_offset as usize..]
         )?;
 
+        let section_names_offset = section_headers[elf_header.section_header_name_index as usize].offset;
+        let section_names_bytes = &self.file[section_names_offset as usize..];
+        let sections = section_headers.into_iter().map(|header| Section {
+            name: String::from_utf8(ElfParser::take_alphabetic(&section_names_bytes[header.name as usize..]).unwrap().1.to_vec()).unwrap(),
+            header
+        }).collect::<Vec<Section>>();
+
         Ok((input, Elf {
             header: elf_header,
             program_headers,
-            section_headers
+            sections
         }))
+    }
+
+    fn take_alphabetic(input: &[u8]) -> IResult<&[u8], &[u8]> {
+        Ok(take_while(ElfParser::is_not_end)(input)?)
+    }
+//  17
+    fn is_not_end(input: u8) -> bool {
+        input != b'\x00'
     }
 
     pub fn parse_section_headers(num: usize) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<SectionHeader>> {

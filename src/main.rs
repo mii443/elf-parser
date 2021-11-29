@@ -17,8 +17,8 @@ fn main() {
                 println!("{:?}", program_header);
             }
 
-            for section_header in elf.section_headers {
-                println!("{:?}", section_header);
+            for section in elf.sections {
+                println!("{:?}", section);
             }
         },
         Err(_) => {}
