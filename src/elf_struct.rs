@@ -5,6 +5,11 @@ pub struct Elf {
     pub section_headers: Vec<SectionHeader>
 }
 
+pub struct Section {
+    pub name: String,
+    pub section_header: SectionHeader
+}
+
 #[derive(Debug)]
 pub struct SectionHeader {
     pub name: u32,

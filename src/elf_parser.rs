@@ -1,4 +1,4 @@
-use nom::{IResult, bytes::complete::{tag, take}, number::complete::{le_u16, le_u32, le_u64}};
+use nom::{IResult, bytes::complete::{tag, take}, multi::count, number::complete::{le_u16, le_u32, le_u64}};
 
 use crate::elf_struct::{Elf, ElfHeader, ProgramHeader, SectionHeader};
 
@@ -9,34 +9,29 @@ pub struct ElfParser {
 impl ElfParser {
     
     pub fn parse(&mut self) -> IResult<&[u8], Elf> {
-        let (input_headerless, elf_header) = ElfParser::parse_header(&self.file)?;
-        let (mut input, _) = take(elf_header.program_header_offset - 64)(input_headerless)?;
+        let (_, elf_header) = ElfParser::parse_header(&self.file)?;
 
-        let mut program_header_counter = 0;
-        let mut program_headers: Vec<ProgramHeader> = vec![];
-        while program_header_counter < elf_header.program_header_num {
-            let (input_tmp, program_header) = ElfParser::parse_program_header(input)?;
-            program_headers.push(program_header);
-            input = input_tmp;
-            program_header_counter += 1;
-        }
+        let (_, program_headers) = ElfParser::parse_program_headers(
+            elf_header.program_header_num as usize
+        )(
+            &self.file[elf_header.program_header_offset as usize..]
+        )?;
 
-        let (mut input, _) = take(elf_header.section_header_offset - 64)(input_headerless)?;
-
-        let mut section_header_counter = 0;
-        let mut section_headers: Vec<SectionHeader> = vec![];
-        while section_header_counter < elf_header.section_header_num {
-            let (input_tmp, section_header) = ElfParser::parse_section_header(input)?;
-            section_headers.push(section_header);
-            input = input_tmp;
-            section_header_counter += 1;
-        }        
+        let (input, section_headers) = ElfParser::parse_section_headers(
+            elf_header.section_header_num as usize
+        )(
+            &self.file[elf_header.section_header_offset as usize..]
+        )?;
 
         Ok((input, Elf {
             header: elf_header,
             program_headers,
             section_headers
         }))
+    }
+
+    pub fn parse_section_headers(num: usize) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<SectionHeader>> {
+        move |raw: &[u8]| count(ElfParser::parse_section_header, num)(raw)
     }
 
     pub fn parse_section_header(input: &[u8]) -> IResult<&[u8], SectionHeader> {
@@ -63,6 +58,10 @@ impl ElfParser {
             align,
             entry_size
         }))
+    }
+
+    pub fn parse_program_headers(num: usize) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<ProgramHeader>> {
+        move |raw: &[u8]| count(ElfParser::parse_program_header, num)(raw)
     }
 
     pub fn parse_program_header(input: &[u8]) -> IResult<&[u8], ProgramHeader> {
